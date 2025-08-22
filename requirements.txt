@@ -1,0 +1,16 @@
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+tensorflow==2.13.0
+matplotlib==3.7.2
+seaborn==0.12.2
+yfinance==0.2.18
+backtesting==0.3.3
+streamlit==1.25.0
+plotly==5.15.0
+ta-lib==0.4.26
+python-dotenv==1.0.0
+loguru==0.7.0
+pydantic==2.1.1
+fastapi==0.101.1
+uvicorn==0.23.2
