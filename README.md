@@ -1,27 +1,27 @@
-# 🤖 Trading AI - Market Analysis & Signal Generation
+# 🤖 Trading AI - Análisis de Mercado y Generación de Señales
 
-A comprehensive AI-powered trading system that analyzes financial markets and generates trading signals using reinforcement learning. The system provides recommendations for manual execution, ensuring complete separation between analysis and trading execution.
+Un sistema integral de trading impulsado por IA que analiza mercados financieros y genera señales de trading usando aprendizaje por refuerzo. El sistema proporciona recomendaciones para ejecución manual, asegurando una separación completa entre análisis y ejecución de operaciones.
 
-## 🎯 Features
+## 🎯 Características
 
-### Core Capabilities
-- **AI-Powered Signal Generation**: Uses Deep Q-Network (DQN) reinforcement learning for intelligent market analysis
-- **Multi-Asset Support**: Analyzes stocks, ETFs, forex, cryptocurrencies, and commodities
-- **Comprehensive Technical Analysis**: 15+ technical indicators including RSI, MACD, Bollinger Bands, etc.
-- **Advanced Risk Management**: Dynamic position sizing, stop-loss, and take-profit calculations
-- **Real-time Market Data**: Integration with Yahoo Finance for live market data
-- **Backtesting Framework**: Comprehensive historical performance testing
-- **Interactive Dashboard**: Web-based interface for signal monitoring and analysis
-- **Performance Monitoring**: Track signal accuracy and trading performance over time
+### Capacidades Principales
+- **Generación de Señales con IA**: Utiliza Deep Q-Network (DQN) de aprendizaje por refuerzo para análisis inteligente de mercados
+- **Soporte Multi-Activos**: Analiza acciones, ETFs, forex, criptomonedas y commodities
+- **Análisis Técnico Integral**: Más de 15 indicadores técnicos incluyendo RSI, MACD, Bandas de Bollinger, etc.
+- **Gestión Avanzada de Riesgo**: Dimensionado dinámico de posición, cálculos de stop-loss y take-profit
+- **Datos de Mercado en Tiempo Real**: Integración con Yahoo Finance para datos de mercado en vivo
+- **Framework de Backtesting**: Pruebas integrales de rendimiento histórico
+- **Dashboard Interactivo**: Interfaz web para monitoreo y análisis de señales
+- **Monitoreo de Rendimiento**: Seguimiento de precisión de señales y rendimiento de trading a lo largo del tiempo
 
-### Security & Risk Features
-- **No Direct Trading**: System only generates signals - no automatic order execution
-- **Risk Assessment**: Comprehensive risk analysis for each signal
-- **Position Sizing**: Intelligent position sizing based on account balance and risk tolerance
-- **Market Condition Analysis**: Adapts to changing market conditions
-- **Signal Validation**: Multi-layer validation before signal generation
+### Características de Seguridad y Riesgo
+- **Sin Trading Directo**: El sistema solo genera señales - no hay ejecución automática de órdenes
+- **Evaluación de Riesgo**: Análisis integral de riesgo para cada señal
+- **Dimensionado de Posición**: Dimensionado inteligente de posición basado en saldo de cuenta y tolerancia al riesgo
+- **Análisis de Condiciones de Mercado**: Se adapta a condiciones cambiantes del mercado
+- **Validación de Señales**: Validación multi-capa antes de la generación de señales
 
-## 🏗️ System Architecture
+## 🏗️ Arquitectura del Sistema
 
 ```
 trading-ai/

@@ -12,29 +12,29 @@ from src.backtesting.backtester import Backtester
 from config.config import config
 
 class TradingDashboard:
-    """Streamlit-based dashboard for trading signal display and analysis"""
+    """Dashboard basado en Streamlit para mostrar señales de trading y análisis"""
     
     def __init__(self):
         self.signal_generator = SignalGenerator()
         self.backtester = Backtester()
         
     def run(self):
-        """Run the main dashboard"""
+        """Ejecutar el dashboard principal"""
         st.set_page_config(
-            page_title="Trading AI Dashboard",
+            page_title="Dashboard Trading AI",
             page_icon="📈",
             layout="wide",
             initial_sidebar_state="expanded"
         )
         
-        st.title("🤖 Trading AI Dashboard")
+        st.title("🤖 Dashboard Trading AI")
         st.markdown("---")
         
         # Sidebar for navigation
         self.render_sidebar()
         
         # Main content area
-        tab1, tab2, tab3, tab4 = st.tabs(["🎯 Live Signals", "📊 Analysis", "🔄 Backtesting", "⚙️ Settings"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🎯 Señales en Vivo", "📊 Análisis", "🔄 Backtesting", "⚙️ Configuración"])
         
         with tab1:
             self.render_live_signals()
@@ -49,22 +49,22 @@ class TradingDashboard:
             self.render_settings()
     
     def render_sidebar(self):
-        """Render sidebar with controls"""
-        st.sidebar.header("📋 Controls")
+        """Renderizar barra lateral con controles"""
+        st.sidebar.header("📋 Controles")
         
-        # Symbol selection
-        st.sidebar.subheader("Asset Selection")
+        # Selección de símbolos
+        st.sidebar.subheader("Selección de Activos")
         selected_symbols = st.sidebar.multiselect(
-            "Select assets to analyze:",
+            "Selecciona activos a analizar:",
             options=config.DEFAULT_SYMBOLS,
             default=config.DEFAULT_SYMBOLS[:3]
         )
         st.session_state.selected_symbols = selected_symbols
         
-        # Risk settings
-        st.sidebar.subheader("Risk Management")
+        # Configuración de riesgo
+        st.sidebar.subheader("Gestión de Riesgo")
         risk_per_trade = st.sidebar.slider(
-            "Max Risk per Trade (%)",
+            "Riesgo Máximo por Operación (%)",
             min_value=0.5,
             max_value=5.0,
             value=config.MAX_RISK_PER_TRADE * 100,
@@ -72,9 +72,9 @@ class TradingDashboard:
         )
         st.session_state.risk_per_trade = risk_per_trade / 100
         
-        # Account balance
+        # Saldo de cuenta
         account_balance = st.sidebar.number_input(
-            "Account Balance ($)",
+            "Saldo de Cuenta ($)",
             min_value=1000,
             max_value=1000000,
             value=int(config.INITIAL_CAPITAL),
@@ -82,26 +82,26 @@ class TradingDashboard:
         )
         st.session_state.account_balance = account_balance
         
-        # Auto-refresh
-        st.sidebar.subheader("Auto Refresh")
-        auto_refresh = st.sidebar.checkbox("Enable auto-refresh (30s)")
+        # Auto-actualización
+        st.sidebar.subheader("Auto Actualización")
+        auto_refresh = st.sidebar.checkbox("Habilitar auto-actualización (30s)")
         if auto_refresh:
             time.sleep(30)
             st.rerun()
     
     def render_live_signals(self):
-        """Render live trading signals"""
-        st.header("🎯 Live Trading Signals")
+        """Renderizar señales de trading en vivo"""
+        st.header("🎯 Señales de Trading en Vivo")
         
         col1, col2 = st.columns([2, 1])
         
         with col2:
-            if st.button("🔄 Refresh Signals", type="primary"):
+            if st.button("🔄 Actualizar Señales", type="primary"):
                 st.rerun()
         
-        # Generate signals
+        # Generar señales
         if 'selected_symbols' in st.session_state:
-            with st.spinner("Generating signals..."):
+            with st.spinner("Generando señales..."):
                 signals = []
                 for symbol in st.session_state.selected_symbols:
                     signal = self.signal_generator.generate_signal(symbol)
@@ -112,11 +112,11 @@ class TradingDashboard:
                     self.display_signals_table(signals)
                     self.display_signal_details(signals)
                 else:
-                    st.warning("No signals generated. Please check your symbol selection.")
+                    st.warning("No se generaron señales. Por favor verifica tu selección de símbolos.")
     
     def display_signals_table(self, signals: List):
         """Display signals in a formatted table"""
-        st.subheader("📊 Signal Summary")
+        st.subheader("📊 Resumen de Señales")
         
         # Create summary dataframe
         signal_data = []
@@ -149,26 +149,26 @@ class TradingDashboard:
         st.dataframe(styled_df, use_container_width=True)
     
     def format_signal(self, signal: str) -> str:
-        """Format signal with emoji"""
+        """Formatear señal con emoji"""
         if signal == 'BUY':
-            return '🟢 BUY'
+            return '🟢 COMPRAR'
         elif signal == 'SELL':
-            return '🔴 SELL'
+            return '🔴 VENDER'
         else:
-            return '⚪ HOLD'
+            return '⚪ MANTENER'
     
     def display_signal_details(self, signals: List):
-        """Display detailed signal information"""
-        st.subheader("🔍 Signal Details")
+        """Mostrar información detallada de señales"""
+        st.subheader("🔍 Detalles de Señales")
         
         for signal in signals:
             with st.expander(f"{signal.symbol} - {self.format_signal(signal.signal)}"):
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    st.metric("Current Price", f"${signal.current_price:.2f}")
-                    st.metric("Confidence", f"{signal.confidence:.1%}")
-                    st.metric("Position Size", f"{signal.position_size:.0f}")
+                    st.metric("Precio Actual", f"${signal.current_price:.2f}")
+                    st.metric("Confianza", f"{signal.confidence:.1%}")
+                    st.metric("Tamaño Posición", f"{signal.position_size:.0f}")
                 
                 with col2:
                     st.metric("Stop Loss", f"${signal.stop_loss:.2f}")
@@ -176,8 +176,8 @@ class TradingDashboard:
                     st.metric("Risk/Reward", f"{signal.risk_reward_ratio:.1f}")
                 
                 with col3:
-                    st.metric("Max Loss", f"${signal.max_loss:.2f}")
-                    st.metric("Timestamp", signal.timestamp.strftime("%H:%M:%S"))
+                    st.metric("Pérdida Máxima", f"${signal.max_loss:.2f}")
+                    st.metric("Hora", signal.timestamp.strftime("%H:%M:%S"))
                 
                 # Technical analysis
                 st.write("**Technical Analysis:**")

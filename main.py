@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Trading AI Main Application
-Entry point for the market analysis and signal generation system
+Aplicación Principal de Trading AI
+Punto de entrada para el sistema de análisis de mercado y generación de señales
 """
 
 import sys
@@ -19,7 +19,7 @@ from src.monitoring.performance_monitor import PerformanceMonitor
 from config.config import config
 
 def setup_logging():
-    """Setup logging configuration"""
+    """Configurar sistema de logging"""
     logger.remove()  # Remove default handler
     
     # Console logging
@@ -38,19 +38,19 @@ def setup_logging():
         retention="30 days"
     )
     
-    logger.info("Trading AI system initialized")
+    logger.info("Sistema Trading AI inicializado")
 
 def run_dashboard():
-    """Run the Streamlit dashboard"""
+    """Ejecutar el dashboard de Streamlit"""
     import subprocess
-    logger.info("Starting Streamlit dashboard...")
+    logger.info("Iniciando dashboard de Streamlit...")
     
     dashboard_path = os.path.join(os.path.dirname(__file__), 'src', 'ui', 'dashboard.py')
     subprocess.run([sys.executable, '-m', 'streamlit', 'run', dashboard_path])
 
 def generate_signals(symbols=None):
-    """Generate trading signals for specified symbols"""
-    logger.info("Generating trading signals...")
+    """Generar señales de trading para símbolos específicos"""
+    logger.info("Generando señales de trading...")
     
     signal_generator = SignalGenerator()
     monitor = PerformanceMonitor()
@@ -61,14 +61,14 @@ def generate_signals(symbols=None):
     signals = signal_generator.generate_multiple_signals(symbols)
     
     if not signals:
-        logger.warning("No signals generated")
+        logger.warning("No se generaron señales")
         return
     
     print("\n" + "="*80)
-    print("🤖 TRADING AI SIGNALS")
+    print("🤖 SEÑALES DE TRADING AI")
     print("="*80)
-    print(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Symbols analyzed: {', '.join(symbols)}")
+    print(f"Generado el: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Símbolos analizados: {', '.join(symbols)}")
     print("-"*80)
     
     for signal in signals:
@@ -77,24 +77,24 @@ def generate_signals(symbols=None):
         
         # Display signal
         print(f"\n📊 {signal.symbol}")
-        print(f"Signal: {signal.signal} ({'🟢' if signal.signal == 'BUY' else '🔴' if signal.signal == 'SELL' else '⚪'})")
-        print(f"Confidence: {signal.confidence:.1%}")
-        print(f"Current Price: ${signal.current_price:.2f}")
-        print(f"Entry Price: ${signal.entry_price:.2f}")
+        print(f"Señal: {signal.signal} ({'🟢' if signal.signal == 'BUY' else '🔴' if signal.signal == 'SELL' else '⚪'})")
+        print(f"Confianza: {signal.confidence:.1%}")
+        print(f"Precio Actual: ${signal.current_price:.2f}")
+        print(f"Precio de Entrada: ${signal.entry_price:.2f}")
         print(f"Stop Loss: ${signal.stop_loss:.2f}")
         print(f"Take Profit: ${signal.take_profit:.2f}")
-        print(f"Risk/Reward: {signal.risk_reward_ratio:.1f}")
-        print(f"Position Size: {signal.position_size:.0f}")
-        print(f"Max Loss: ${signal.max_loss:.2f}")
-        print(f"Reasoning: {signal.reasoning}")
+        print(f"Riesgo/Recompensa: {signal.risk_reward_ratio:.1f}")
+        print(f"Tamaño de Posición: {signal.position_size:.0f}")
+        print(f"Pérdida Máxima: ${signal.max_loss:.2f}")
+        print(f"Razonamiento: {signal.reasoning}")
         print("-"*40)
     
-    print(f"\n✅ Generated {len(signals)} signals")
+    print(f"\n✅ Se generaron {len(signals)} señales")
     print("="*80)
 
 def run_backtest(symbols=None, start_date=None, end_date=None):
-    """Run backtesting for specified parameters"""
-    logger.info("Starting backtest...")
+    """Ejecutar backtesting con parámetros especificados"""
+    logger.info("Iniciando backtest...")
     
     if symbols is None:
         symbols = ['AAPL', 'GOOGL', 'MSFT']
@@ -108,20 +108,20 @@ def run_backtest(symbols=None, start_date=None, end_date=None):
     backtester = Backtester()
     results = backtester.run_backtest(symbols, start_date, end_date)
     
-    # Generate and display report
+    # Generar y mostrar reporte
     report = backtester.generate_report(results)
     print(report)
     
-    # Save report to file
-    report_filename = f"backtest_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    # Guardar reporte en archivo
+    report_filename = f"reporte_backtest_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     with open(report_filename, 'w') as f:
         f.write(report)
     
-    logger.info(f"Backtest report saved to {report_filename}")
+    logger.info(f"Reporte de backtest guardado en {report_filename}")
 
 def train_models(symbols=None):
-    """Train AI models for specified symbols"""
-    logger.info("Training AI models...")
+    """Entrenar modelos de IA para símbolos especificados"""
+    logger.info("Entrenando modelos de IA...")
     
     if symbols is None:
         symbols = config.DEFAULT_SYMBOLS
@@ -129,50 +129,50 @@ def train_models(symbols=None):
     signal_generator = SignalGenerator()
     
     for symbol in symbols:
-        logger.info(f"Training model for {symbol}")
+        logger.info(f"Entrenando modelo para {symbol}")
         success = signal_generator.train_model(symbol)
         
         if success:
-            logger.info(f"✅ Successfully trained model for {symbol}")
+            logger.info(f"✅ Modelo entrenado exitosamente para {symbol}")
         else:
-            logger.error(f"❌ Failed to train model for {symbol}")
+            logger.error(f"❌ Fallo al entrenar modelo para {symbol}")
     
-    logger.info("Model training completed")
+    logger.info("Entrenamiento de modelos completado")
 
 def generate_performance_report():
-    """Generate performance report"""
-    logger.info("Generating performance report...")
+    """Generar reporte de rendimiento"""
+    logger.info("Generando reporte de rendimiento...")
     
     monitor = PerformanceMonitor()
     report = monitor.generate_weekly_report()
     
     print("\n" + "="*60)
-    print("📈 PERFORMANCE REPORT")
+    print("📈 REPORTE DE RENDIMIENTO")
     print("="*60)
     print(report)
     
-    # Save report
-    report_filename = f"performance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    # Guardar reporte
+    report_filename = f"reporte_rendimiento_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     with open(report_filename, 'w') as f:
         f.write(report)
     
-    logger.info(f"Performance report saved to {report_filename}")
+    logger.info(f"Reporte de rendimiento guardado en {report_filename}")
 
 def main():
-    """Main application entry point"""
-    parser = argparse.ArgumentParser(description="Trading AI System")
+    """Punto de entrada principal de la aplicación"""
+    parser = argparse.ArgumentParser(description="Sistema Trading AI")
     parser.add_argument('command', choices=['dashboard', 'signals', 'backtest', 'train', 'report'], 
-                       help='Command to execute')
+                       help='Comando a ejecutar')
     
-    # Optional arguments
-    parser.add_argument('--symbols', nargs='+', help='Symbols to analyze')
-    parser.add_argument('--start-date', help='Start date for backtest (YYYY-MM-DD)')
-    parser.add_argument('--end-date', help='End date for backtest (YYYY-MM-DD)')
+    # Argumentos opcionales
+    parser.add_argument('--symbols', nargs='+', help='Símbolos a analizar')
+    parser.add_argument('--start-date', help='Fecha de inicio para backtest (YYYY-MM-DD)')
+    parser.add_argument('--end-date', help='Fecha de fin para backtest (YYYY-MM-DD)')
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
     
     args = parser.parse_args()
     
-    # Setup logging
+    # Configurar logging
     config.LOG_LEVEL = args.log_level
     setup_logging()
     
@@ -193,11 +193,11 @@ def main():
             generate_performance_report()
     
     except KeyboardInterrupt:
-        logger.info("Application interrupted by user")
+        logger.info("Aplicación interrumpida por el usuario")
         sys.exit(0)
     
     except Exception as e:
-        logger.error(f"Application error: {str(e)}")
+        logger.error(f"Error en aplicación: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from config.config import config
 
 @dataclass
 class TradingSignal:
-    """Container for trading signal information"""
+    """Contenedor para información de señales de trading"""
     symbol: str
     signal: str  # 'BUY', 'SELL', 'HOLD'
     confidence: float
@@ -31,7 +31,7 @@ class TradingSignal:
     market_conditions: Dict
 
 class SignalGenerator:
-    """Main signal generation engine combining RL model and risk management"""
+    """Motor principal de generación de señales combinando modelo RL y gestión de riesgo"""
     
     def __init__(self, account_balance: float = None):
         self.data_fetcher = MarketDataFetcher()

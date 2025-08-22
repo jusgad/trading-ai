@@ -2,29 +2,29 @@ from typing import Dict, List
 from pydantic import BaseSettings
 
 class TradingConfig(BaseSettings):
-    """Configuration settings for the trading AI system"""
+    """Configuración del sistema de Trading AI"""
     
-    # Data sources
+    # Fuentes de datos
     DEFAULT_SYMBOLS: List[str] = ["AAPL", "GOOGL", "MSFT", "TSLA", "BTC-USD", "ETH-USD"]
     DATA_INTERVAL: str = "1h"  # 1m, 5m, 15m, 30m, 1h, 1d
-    LOOKBACK_PERIOD: int = 100  # Number of periods to look back
+    LOOKBACK_PERIOD: int = 100  # Número de períodos hacia atrás
     
-    # Model parameters
+    # Parámetros del modelo
     LEARNING_RATE: float = 0.001
     BATCH_SIZE: int = 32
     EPOCHS: int = 100
     
-    # Risk management
-    MAX_RISK_PER_TRADE: float = 0.02  # 2% max risk per trade
+    # Gestión de riesgo
+    MAX_RISK_PER_TRADE: float = 0.02  # 2% máximo riesgo por operación
     STOP_LOSS_MULTIPLIER: float = 2.0
     TAKE_PROFIT_MULTIPLIER: float = 3.0
     
-    # Signal generation
-    CONFIDENCE_THRESHOLD: float = 0.7  # Minimum confidence for signal generation
+    # Generación de señales
+    CONFIDENCE_THRESHOLD: float = 0.7  # Confianza mínima para generar señales
     
     # Backtesting
     INITIAL_CAPITAL: float = 100000.0
-    COMMISSION: float = 0.001  # 0.1% commission
+    COMMISSION: float = 0.001  # 0.1% comisión
     
     # Logging
     LOG_LEVEL: str = "INFO"
