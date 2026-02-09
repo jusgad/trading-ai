@@ -1,19 +1,22 @@
 import pandas as pd
 import numpy as np
+import os
 from datetime import datetime
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 from loguru import logger
+import tensorflow as tf
 
 from src.data.data_fetcher import MarketDataFetcher
-from src.indicators.technical_indicators import TechnicalIndicators
-from src.models.rl_agent import RLTrainer
+from src.data.features import FeatureEngineer
+from src.models.transformer_model import TransformerBlock
+from src.training.trainer import ModelTrainer
 from src.risk.risk_manager import RiskManager, RiskMetrics
 from config.config import config
 
 @dataclass
 class TradingSignal:
-    """Contenedor para información de señales de trading"""
+    """Container for trading signal information"""
     symbol: str
     signal: str  # 'BUY', 'SELL', 'HOLD'
     confidence: float
@@ -31,123 +34,156 @@ class TradingSignal:
     market_conditions: Dict
 
 class SignalGenerator:
-    """Motor principal de generación de señales combinando modelo RL y gestión de riesgo"""
+    """
+    Signal Generator using Transformer-based model and Advanced Risk Management.
+    """
     
     def __init__(self, account_balance: float = None):
         self.data_fetcher = MarketDataFetcher()
         self.risk_manager = RiskManager(account_balance)
-        self.trained_models = {}  # Store trained models for different symbols
         self.account_balance = account_balance or config.INITIAL_CAPITAL
+        self.models_dir = os.path.join(os.path.dirname(__file__), '..', 'models', 'saved_models')
+        os.makedirs(self.models_dir, exist_ok=True)
         
+    def _get_model_path(self, symbol: str) -> str:
+        return os.path.join(self.models_dir, f"{symbol}_transformer.h5")
+        
+    def _get_scaler_path(self, symbol: str) -> str:
+        return os.path.join(self.models_dir, f"{symbol}_scaler.pkl")
+
     def train_model(self, symbol: str, training_period: str = "2y") -> bool:
         """
-        Train RL model for a specific symbol
-        
-        Args:
-            symbol: Trading symbol
-            training_period: Period for training data
-            
-        Returns:
-            True if training successful
+        Train Transformer model for a specific symbol.
         """
         try:
-            logger.info(f"Training model for {symbol}")
+            logger.info(f"Training model for {symbol}...")
             
-            # Fetch training data
+            # Fetch Data
             data = self.data_fetcher.fetch_data(symbol, period=training_period)
-            if data is None or len(data) < 100:
+            if data is None or len(data) < 200:
                 logger.error(f"Insufficient data for training {symbol}")
                 return False
+                
+            # Feature Engineering
+            fe = FeatureEngineer()
+            df_features = fe.create_features(data)
             
-            # Calculate technical indicators
-            data_with_indicators = TechnicalIndicators.calculate_all_indicators(data)
+            # Train
+            trainer = ModelTrainer(epochs=config.EPOCHS if hasattr(config, 'EPOCHS') else 50)
+            model = trainer.train(df_features, fe)
             
-            # Train RL model
-            trainer = RLTrainer(data_with_indicators)
-            training_results = trainer.train(episodes=config.EPOCHS)
+            # Save Model & Scaler
+            model.save(self._get_model_path(symbol))
+            fe.save_scaler(self._get_scaler_path(symbol))
             
-            # Store trained model
-            self.trained_models[symbol] = trainer
-            
-            logger.info(f"Model training completed for {symbol}")
-            logger.info(f"Final portfolio value: ${training_results['portfolio_values'][-1]:.2f}")
-            
+            logger.info(f"Model and scaler saved for {symbol}")
             return True
             
         except Exception as e:
             logger.error(f"Error training model for {symbol}: {str(e)}")
             return False
-    
+
     def generate_signal(self, symbol: str, use_realtime: bool = True) -> Optional[TradingSignal]:
         """
-        Generate trading signal for a symbol
-        
-        Args:
-            symbol: Trading symbol
-            use_realtime: Whether to use real-time data
-            
-        Returns:
-            TradingSignal object or None
+        Generate trading signal using the trained model.
         """
         try:
-            # Check if model is trained for this symbol
-            if symbol not in self.trained_models:
-                logger.warning(f"No trained model for {symbol}. Training now...")
+            model_path = self._get_model_path(symbol)
+            scaler_path = self._get_scaler_path(symbol)
+            
+            # Check if model exists
+            if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+                logger.warning(f"No trained model found for {symbol}. Training now...")
                 if not self.train_model(symbol):
                     return None
             
+            # Load Model
+            model = tf.keras.models.load_model(model_path, custom_objects={'TransformerBlock': TransformerBlock})
+            
+            # Load Scaler (Feature Engineer)
+            fe = FeatureEngineer()
+            fe.load_scaler(scaler_path)
+            
             # Fetch recent data
-            data = self.data_fetcher.fetch_data(symbol, period="3mo")
-            if data is None or len(data) < config.LOOKBACK_PERIOD:
-                logger.error(f"Insufficient data for {symbol}")
+            # Need enough data for lag features + window size
+            lookback = 200 # Safe buffer
+            data = self.data_fetcher.fetch_data(symbol, period="6mo") # Fetch plenty
+            if data is None:
                 return None
+                
+            # Create Features
+            df_features = fe.create_features(data)
             
-            # Calculate technical indicators
-            data_with_indicators = TechnicalIndicators.calculate_all_indicators(data)
+            # Check if we have enough data after feature creation
+            window_size = 60 # Match trainer window size
+            if len(df_features) < window_size:
+                logger.error(f"Not enough data for inference on {symbol}")
+                return None
+                
+            # Prepare Input Sequence
+            # Take the last window_size records
+            current_sequence_raw = df_features.iloc[-window_size:]
+            current_sequence_scaled = fe.transform(current_sequence_raw)
             
-            # Get RL model signal
-            rl_signal = self.trained_models[symbol].get_signal(data_with_indicators)
+            # Predict
+            X_pred = np.expand_dims(current_sequence_scaled[fe.feature_columns].values, axis=0) # (1, window, features)
+            preds = model.predict(X_pred, verbose=0)[0] # (3,)
             
-            # Get current price
-            current_price = data_with_indicators['close'].iloc[-1]
+            # Interpret Prediction
+            # 0: HOLD, 1: BUY, 2: SELL
+            class_idx = np.argmax(preds)
+            confidence = preds[class_idx]
             
-            # Assess market conditions
-            market_conditions = self._assess_market_conditions(data_with_indicators)
+            signal_map = {0: 'HOLD', 1: 'BUY', 2: 'SELL'}
+            signal_str = signal_map[class_idx]
             
-            # Generate risk assessment
+            # Current Price
+            current_price = data['close'].iloc[-1]
+            
+            # Risk Management
+            # We construct a dummy 'market_data' for RiskManager from the features + raw data
+            # risk_manager expects a dataframe with 'atr', 'volatility', etc.
+            # df_features has them.
+            
             risk_metrics = self.risk_manager.generate_risk_assessment(
-                signal=rl_signal['signal'],
+                signal=signal_str,
                 current_price=current_price,
-                market_data=data_with_indicators,
-                confidence=rl_signal['confidence'],
+                market_data=df_features, # It has ATR, volatility, RSI as columns
+                confidence=float(confidence),
                 account_balance=self.account_balance
             )
             
-            # Validate signal
+            # Validation
             validation = self.risk_manager.validate_signal(
-                rl_signal['signal'],
+                signal_str,
                 risk_metrics,
-                data_with_indicators
+                df_features
             )
             
-            # Adjust signal based on validation
-            final_signal = rl_signal['signal']
+            # Override to HOLD if invalid
+            final_signal = signal_str
             if not validation['is_valid']:
                 final_signal = 'HOLD'
                 logger.warning(f"Signal invalidated for {symbol}: {validation['warnings']}")
-            
-            # Generate reasoning
-            reasoning = self._generate_reasoning(
-                rl_signal, risk_metrics, validation, market_conditions
-            )
-            
-            # Create trading signal
-            trading_signal = TradingSignal(
+
+            # Reasoning
+            reasoning = (f"Model predicted {signal_str} with {confidence:.1%} confidence. "
+                         f"Risk Score: {validation.get('risk_score', 0):.2f}. "
+                         f"{'; '.join(validation['warnings'])}")
+                         
+            # Technical Analysis Summary
+            ta_summary = {
+                'rsi': df_features['rsi'].iloc[-1] if 'rsi' in df_features else 0,
+                'atr': df_features['atr'].iloc[-1] if 'atr' in df_features else 0,
+                'volatility': df_features.get('volatility', pd.Series([0])).iloc[-1]
+            }
+
+            return TradingSignal(
                 symbol=symbol,
                 signal=final_signal,
-                confidence=rl_signal['confidence'],
-                current_price=current_price,
+                confidence=float(confidence),
                 entry_price=current_price,
+                current_price=current_price,
                 stop_loss=risk_metrics.stop_loss,
                 take_profit=risk_metrics.take_profit,
                 position_size=risk_metrics.confidence_adjusted_size,
@@ -155,30 +191,18 @@ class SignalGenerator:
                 max_loss=risk_metrics.max_loss,
                 timestamp=datetime.now(),
                 reasoning=reasoning,
-                technical_analysis=self._get_technical_analysis(data_with_indicators),
+                technical_analysis=ta_summary,
                 risk_assessment=asdict(risk_metrics),
-                market_conditions=market_conditions
+                market_conditions={'valid': validation['is_valid']}
             )
-            
-            logger.info(f"Generated signal for {symbol}: {final_signal} "
-                       f"(Confidence: {rl_signal['confidence']:.2f})")
-            
-            return trading_signal
-            
+
         except Exception as e:
             logger.error(f"Error generating signal for {symbol}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
-    
+
     def generate_multiple_signals(self, symbols: List[str] = None) -> List[TradingSignal]:
-        """
-        Generate signals for multiple symbols
-        
-        Args:
-            symbols: List of symbols to analyze
-            
-        Returns:
-            List of TradingSignal objects
-        """
         if symbols is None:
             symbols = config.DEFAULT_SYMBOLS
         
@@ -187,151 +211,6 @@ class SignalGenerator:
             signal = self.generate_signal(symbol)
             if signal:
                 signals.append(signal)
-        
-        # Sort by confidence descending
+                
         signals.sort(key=lambda x: x.confidence, reverse=True)
-        
         return signals
-    
-    def _assess_market_conditions(self, data: pd.DataFrame) -> Dict:
-        """Assess current market conditions"""
-        latest = data.iloc[-1]
-        
-        conditions = {
-            'trend': self._determine_trend(data),
-            'volatility': 'HIGH' if latest.get('volatility', 0) > 0.03 else 'NORMAL',
-            'volume': 'HIGH' if latest.get('volume_ratio', 1) > 1.5 else 'NORMAL',
-            'momentum': 'BULLISH' if latest.get('momentum', 0) > 0.05 else 'BEARISH' if latest.get('momentum', 0) < -0.05 else 'NEUTRAL',
-            'rsi_level': 'OVERBOUGHT' if latest.get('rsi', 50) > 70 else 'OVERSOLD' if latest.get('rsi', 50) < 30 else 'NEUTRAL',
-            'bb_position': self._get_bollinger_position(latest)
-        }
-        
-        return conditions
-    
-    def _determine_trend(self, data: pd.DataFrame) -> str:
-        """Determine market trend"""
-        latest = data.iloc[-1]
-        sma_20 = latest.get('sma_20', latest['close'])
-        sma_50 = latest.get('sma_50', latest['close'])
-        
-        if latest['close'] > sma_20 > sma_50:
-            return 'UPTREND'
-        elif latest['close'] < sma_20 < sma_50:
-            return 'DOWNTREND'
-        else:
-            return 'SIDEWAYS'
-    
-    def _get_bollinger_position(self, latest_data) -> str:
-        """Determine position relative to Bollinger Bands"""
-        close = latest_data['close']
-        bb_upper = latest_data.get('bb_upper', close)
-        bb_lower = latest_data.get('bb_lower', close)
-        bb_middle = latest_data.get('bb_middle', close)
-        
-        if close > bb_upper:
-            return 'ABOVE_UPPER'
-        elif close < bb_lower:
-            return 'BELOW_LOWER'
-        elif close > bb_middle:
-            return 'UPPER_HALF'
-        else:
-            return 'LOWER_HALF'
-    
-    def _generate_reasoning(self, rl_signal: Dict, risk_metrics: RiskMetrics, 
-                          validation: Dict, market_conditions: Dict) -> str:
-        """Generate human-readable reasoning for the signal"""
-        reasoning_parts = []
-        
-        # RL model confidence
-        reasoning_parts.append(f"AI model recommends {rl_signal['signal']} with {rl_signal['confidence']:.1%} confidence")
-        
-        # Market conditions
-        trend = market_conditions.get('trend', 'UNKNOWN')
-        reasoning_parts.append(f"Market trend: {trend}")
-        
-        # Risk assessment
-        if risk_metrics.risk_reward_ratio > 2:
-            reasoning_parts.append(f"Favorable risk/reward ratio of {risk_metrics.risk_reward_ratio:.1f}")
-        elif risk_metrics.risk_reward_ratio < 1.5:
-            reasoning_parts.append(f"Unfavorable risk/reward ratio of {risk_metrics.risk_reward_ratio:.1f}")
-        
-        # Validation warnings
-        if validation['warnings']:
-            reasoning_parts.append(f"Risk warnings: {', '.join(validation['warnings'])}")
-        
-        # Technical indicators
-        rsi_level = market_conditions.get('rsi_level', 'NEUTRAL')
-        if rsi_level != 'NEUTRAL':
-            reasoning_parts.append(f"RSI indicates {rsi_level} conditions")
-        
-        return '. '.join(reasoning_parts)
-    
-    def _get_technical_analysis(self, data: pd.DataFrame) -> Dict:
-        """Extract key technical analysis points"""
-        latest = data.iloc[-1]
-        
-        return {
-            'rsi': latest.get('rsi', 50),
-            'macd_signal': 'BULLISH' if latest.get('macd', 0) > latest.get('macd_signal', 0) else 'BEARISH',
-            'moving_averages': {
-                'price_vs_sma20': 'ABOVE' if latest['close'] > latest.get('sma_20', latest['close']) else 'BELOW',
-                'sma20_vs_sma50': 'ABOVE' if latest.get('sma_20', 0) > latest.get('sma_50', 0) else 'BELOW'
-            },
-            'volatility': latest.get('volatility', 0),
-            'volume_analysis': 'HIGH' if latest.get('volume_ratio', 1) > 1.2 else 'NORMAL'
-        }
-    
-    def get_portfolio_recommendations(self, current_positions: List[Dict] = None) -> Dict:
-        """
-        Get portfolio-level recommendations
-        
-        Args:
-            current_positions: List of current portfolio positions
-            
-        Returns:
-            Portfolio recommendations
-        """
-        if current_positions is None:
-            current_positions = []
-        
-        # Generate signals for all default symbols
-        signals = self.generate_multiple_signals()
-        
-        # Portfolio risk assessment
-        portfolio_risk = self.risk_manager.calculate_portfolio_risk(current_positions)
-        
-        # Filter signals based on portfolio risk
-        recommended_signals = []
-        for signal in signals:
-            if signal.signal != 'HOLD' and portfolio_risk['concentration_risk'] < 0.3:
-                recommended_signals.append(signal)
-        
-        return {
-            'signals': recommended_signals,
-            'portfolio_risk': portfolio_risk,
-            'recommendations': self._generate_portfolio_recommendations(
-                recommended_signals, portfolio_risk, current_positions
-            )
-        }
-    
-    def _generate_portfolio_recommendations(self, signals: List[TradingSignal], 
-                                          portfolio_risk: Dict, 
-                                          current_positions: List[Dict]) -> List[str]:
-        """Generate portfolio-level recommendations"""
-        recommendations = []
-        
-        if portfolio_risk['concentration_risk'] > 0.5:
-            recommendations.append("Portfolio is too concentrated - consider diversifying")
-        
-        if len(signals) == 0:
-            recommendations.append("No high-quality signals found - consider staying in cash")
-        
-        buy_signals = [s for s in signals if s.signal == 'BUY']
-        sell_signals = [s for s in signals if s.signal == 'SELL']
-        
-        if len(buy_signals) > len(sell_signals):
-            recommendations.append("Market sentiment appears bullish")
-        elif len(sell_signals) > len(buy_signals):
-            recommendations.append("Market sentiment appears bearish")
-        
-        return recommendations

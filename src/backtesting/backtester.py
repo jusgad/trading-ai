@@ -55,9 +55,10 @@ class BacktestResults:
 class Backtester:
     """Comprehensive backtesting framework for trading strategies"""
     
-    def __init__(self, initial_capital: float = None, commission: float = None):
+    def __init__(self, initial_capital: float = None, commission: float = None, slippage: float = 0.001):
         self.initial_capital = initial_capital or config.INITIAL_CAPITAL
         self.commission = commission or config.COMMISSION
+        self.slippage = slippage
         self.signal_generator = SignalGenerator(self.initial_capital)
         
     def run_backtest(self, 
@@ -187,7 +188,10 @@ class Backtester:
                 # Enter long position
                 if cash >= signal.position_size * signal.current_price:
                     shares = int(signal.position_size)
-                    cost = shares * signal.current_price
+                    # Apply slippage to entry price
+                    entry_price_with_slippage = signal.current_price * (1 + self.slippage)
+                    
+                    cost = shares * entry_price_with_slippage
                     commission_cost = cost * self.commission
                     total_cost = cost + commission_cost
                     
@@ -195,7 +199,7 @@ class Backtester:
                         cash -= total_cost
                         positions[symbol] = {
                             'shares': shares,
-                            'entry_price': signal.current_price,
+                            'entry_price': entry_price_with_slippage,
                             'entry_date': current_date,
                             'stop_loss': signal.stop_loss,
                             'take_profit': signal.take_profit
@@ -223,7 +227,11 @@ class Backtester:
                 # Exit long position
                 position = positions[symbol]
                 shares = position['shares']
-                revenue = shares * signal.current_price
+                
+                # Apply slippage to exit price
+                exit_price_with_slippage = signal.current_price * (1 - self.slippage)
+                
+                revenue = shares * exit_price_with_slippage
                 commission_cost = revenue * self.commission
                 net_revenue = revenue - commission_cost
                 
