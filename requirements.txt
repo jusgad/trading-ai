@@ -5,7 +5,7 @@ tensorflow==2.13.0
 matplotlib==3.7.2
 seaborn==0.12.2
 yfinance==0.2.18
-backtesting==0.3.3
+pandas-ta==0.3.14b0
 streamlit==1.25.0
 plotly==5.15.0
 ta-lib==0.4.26

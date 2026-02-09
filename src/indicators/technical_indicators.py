@@ -1,7 +1,12 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional
-import talib
+try:
+    import talib
+    HAS_TALIB = True
+except ImportError:
+    HAS_TALIB = False
+    logger.warning("TA-Lib not found, using pandas/numpy fallbacks")
 from loguru import logger
 
 class TechnicalIndicators:

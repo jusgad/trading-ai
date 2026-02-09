@@ -130,4 +130,3 @@ class MarketDataFetcher:
         
         return data.dropna()
 
-import numpy as np

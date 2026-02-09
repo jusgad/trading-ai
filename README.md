@@ -5,9 +5,9 @@ Un sistema integral de trading impulsado por IA que analiza mercados financieros
 ## 🎯 Características
 
 ### Capacidades Principales
-- **Generación de Señales con IA**: Utiliza Deep Q-Network (DQN) de aprendizaje por refuerzo para análisis inteligente de mercados
+- **Generación de Señales con IA**: Utiliza Deep Q-Network (DQN) y **Transformers** para análisis inteligente de mercados
 - **Soporte Multi-Activos**: Analiza acciones, ETFs, forex, criptomonedas y commodities
-- **Análisis Técnico Integral**: Más de 15 indicadores técnicos incluyendo RSI, MACD, Bandas de Bollinger, etc.
+- **Análisis Técnico Integral**: Más de 15 indicadores técnicos incluyendo RSI, MACD, Bandas de Bollinger, y análisis avanzado con **pandas-ta**
 - **Gestión Avanzada de Riesgo**: Dimensionado dinámico de posición, cálculos de stop-loss y take-profit
 - **Datos de Mercado en Tiempo Real**: Integración con Yahoo Finance para datos de mercado en vivo
 - **Framework de Backtesting**: Pruebas integrales de rendimiento histórico
@@ -141,12 +141,12 @@ The web dashboard provides:
 
 ## 🧠 AI Model Details
 
-### Reinforcement Learning Architecture
-- **Algorithm**: Deep Q-Network (DQN)
-- **State Space**: Technical indicators + market conditions + portfolio info
+### Arquitectura de IA
+- **Algoritmo**: Deep Q-Network (DQN) y TimeSeries Transformers
+- **State Space**: Indicadores técnicos + condiciones de mercado + información de cartera
 - **Action Space**: BUY, SELL, HOLD
-- **Reward Function**: Portfolio performance with risk adjustments
-- **Training**: Experience replay with target network updates
+- **Reward Function**: Rendimiento del portafolio ajustado al riesgo
+- **Training**: Experience replay con actualizaciones de target network y validación cruzada (TimeSeriesSplit)
 
 ### Technical Indicators Used
 - Moving Averages (SMA, EMA)
@@ -299,6 +299,7 @@ def custom_indicator(data: pd.Series, window: int = 14) -> pd.Series:
 
 - **numpy**: Numerical computations
 - **pandas**: Data manipulation
+- **pandas-ta**: Technical Analysis Library
 - **tensorflow**: Deep learning framework
 - **yfinance**: Market data retrieval
 - **streamlit**: Web dashboard
